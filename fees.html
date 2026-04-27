@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Fee Tracker — ZERO TAMIL Kids</title>
+  <meta name="description" content="Track monthly fee payments for ZERO TAMIL Kids students."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    .fee-status-cell{display:flex;align-items:center;gap:8px}
+    .status-toggle{
+      position:relative;display:inline-flex;align-items:center;
+      cursor:pointer;gap:8px;font-size:13px;font-weight:600;
+    }
+    .toggle-track{
+      width:46px;height:24px;border-radius:12px;
+      background:rgba(231,76,60,0.25);border:1px solid rgba(231,76,60,0.4);
+      position:relative;transition:all 0.3s ease;
+    }
+    .toggle-track.paid{background:rgba(46,204,113,0.25);border-color:rgba(46,204,113,0.4)}
+    .toggle-thumb{
+      width:18px;height:18px;border-radius:50%;background:var(--red);
+      position:absolute;top:2px;left:2px;transition:all 0.3s ease;
+    }
+    .toggle-track.paid .toggle-thumb{background:var(--green);transform:translateX(22px)}
+    .toggle-label-paid{color:var(--green);display:none}
+    .toggle-label-unpaid{color:var(--red)}
+    .paid-state .toggle-label-paid{display:inline}
+    .paid-state .toggle-label-unpaid{display:none}
+    .paid-date-cell{font-size:12px;color:var(--text-muted)}
+    .summary-bar{
+      display:flex;gap:16px;flex-wrap:wrap;
+      padding:16px 20px;background:var(--bg-card);
+      border:1px solid var(--border);border-radius:var(--radius);
+      margin-bottom:20px;align-items:center;
+    }
+    .summary-item{text-align:center;flex:1;min-width:80px}
+    .summary-item .val{font-size:20px;font-weight:800;margin-bottom:2px}
+    .summary-item .lbl{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px}
+    .month-nav-btn{
+      width:34px;height:34px;border-radius:8px;border:1px solid var(--border);
+      background:var(--bg-card);color:var(--text-primary);font-size:16px;
+      cursor:pointer;transition:var(--t);display:flex;align-items:center;justify-content:center;
+    }
+    .month-nav-btn:hover{border-color:var(--gold);color:var(--gold)}
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">🎓</div>
+      <div class="brand-text">
+        <h1>ZERO TAMIL Kids</h1>
+        <span>Class Fee Management</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Main Menu</div>
+      <a href="dashboard.html" class="nav-item">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a href="students.html" class="nav-item">
+        <span class="nav-icon">👩‍🎓</span> Students
+      </a>
+      <a href="fees.html" class="nav-item active">
+        <span class="nav-icon">💰</span> Fee Tracker
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="user-avatar">👩</div>
+        <div class="user-chip-info">
+          <h4>Tamil Teacher</h4>
+          <p id="user-email-display">Loading…</p>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="logout()">🚪 Sign Out</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+    <header class="page-header">
+      <div class="page-header-title">
+        <h2>Fee Tracker</h2>
+        <p>Track monthly payments per student</p>
+      </div>
+      <div class="header-actions">
+        <!-- Month navigator -->
+        <div class="month-nav">
+          <button class="month-nav-btn" id="prev-month-btn" onclick="changeMonth(-1)" title="Previous month">‹</button>
+          <div class="month-display" id="month-display">—</div>
+          <button class="month-nav-btn" id="next-month-btn" onclick="changeMonth(1)" title="Next month">›</button>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="goToCurrentMonth()">Today</button>
+      </div>
+    </header>
+
+    <div class="page-content">
+
+      <!-- Month Summary Bar -->
+      <div class="summary-bar">
+        <div class="summary-item">
+          <div class="val text-gold" id="sum-total">—</div>
+          <div class="lbl">Total Students</div>
+        </div>
+        <div style="width:1px;background:var(--border)"></div>
+        <div class="summary-item">
+          <div class="val text-green" id="sum-paid">—</div>
+          <div class="lbl">Paid</div>
+        </div>
+        <div style="width:1px;background:var(--border)"></div>
+        <div class="summary-item">
+          <div class="val text-red" id="sum-unpaid">—</div>
+          <div class="lbl">Unpaid</div>
+        </div>
+        <div style="width:1px;background:var(--border)"></div>
+        <div class="summary-item">
+          <div class="val text-green" id="sum-collected" style="font-size:15px">—</div>
+          <div class="lbl">Collected</div>
+        </div>
+        <div style="width:1px;background:var(--border)"></div>
+        <div class="summary-item">
+          <div class="val text-red" id="sum-outstanding" style="font-size:15px">—</div>
+          <div class="lbl">Outstanding</div>
+        </div>
+        <div style="flex:2;min-width:140px">
+          <div class="d-flex justify-between mb-1" style="font-size:12px">
+            <span class="text-muted">Collection Rate</span>
+            <span id="sum-pct" class="fw-600 text-gold">0%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="sum-bar" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter -->
+      <div class="toolbar">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input id="fee-search" type="text" class="form-control" placeholder="Search student…" oninput="filterFeeRows()"/>
+        </div>
+        <div class="filter-tabs">
+          <div class="filter-tab active" data-status="all"    onclick="setStatusFilter('all',this)">All</div>
+          <div class="filter-tab" data-status="unpaid" onclick="setStatusFilter('unpaid',this)">Unpaid</div>
+          <div class="filter-tab" data-status="paid"   onclick="setStatusFilter('paid',this)">Paid</div>
+        </div>
+        <button class="btn btn-success btn-sm" onclick="markAllPaid()" id="mark-all-btn">✅ Mark All Paid</button>
+      </div>
+
+      <!-- Fee Table -->
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Student Name</th>
+              <th>Grade</th>
+              <th>Monthly Fee</th>
+              <th>Status</th>
+              <th>Paid Date</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="fee-tbody">
+            <tr><td colspan="7" class="loading"><div class="spinner"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/fees.js"></script>
+</body>
+</html>

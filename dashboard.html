@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Dashboard — ZERO TAMIL Kids</title>
+  <meta name="description" content="Dashboard overview for ZERO TAMIL Kids class fee management."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">🎓</div>
+      <div class="brand-text">
+        <h1>ZERO TAMIL Kids</h1>
+        <span>Class Fee Management</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Main Menu</div>
+      <a href="dashboard.html" class="nav-item active" id="nav-dashboard">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a href="students.html" class="nav-item" id="nav-students">
+        <span class="nav-icon">👩‍🎓</span> Students
+      </a>
+      <a href="fees.html" class="nav-item" id="nav-fees">
+        <span class="nav-icon">💰</span> Fee Tracker
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="user-avatar">👩</div>
+        <div class="user-chip-info">
+          <h4>Tamil Teacher</h4>
+          <p id="user-email-display">Loading…</p>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="logout()">🚪 Sign Out</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+    <header class="page-header">
+      <div class="page-header-title">
+        <h2>Dashboard</h2>
+        <p id="today-date">Loading…</p>
+      </div>
+      <div class="header-actions">
+        <span id="current-month-label" class="badge badge-gold" style="font-size:13px;padding:5px 14px"></span>
+      </div>
+    </header>
+
+    <div class="page-content">
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card gold">
+          <div class="stat-icon gold">👩‍🎓</div>
+          <div class="stat-info">
+            <label>Total Students</label>
+            <div class="stat-value" id="stat-total">—</div>
+            <div class="stat-change">Active enrolled</div>
+          </div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon green">✅</div>
+          <div class="stat-info">
+            <label>Paid This Month</label>
+            <div class="stat-value" id="stat-paid">—</div>
+            <div class="stat-change" id="stat-paid-amount" style="color:var(--green)"></div>
+          </div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-icon red">❌</div>
+          <div class="stat-info">
+            <label>Unpaid This Month</label>
+            <div class="stat-value" id="stat-unpaid">—</div>
+            <div class="stat-change" id="stat-unpaid-amount" style="color:var(--red)"></div>
+          </div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-icon purple">💵</div>
+          <div class="stat-info">
+            <label>Expected Monthly</label>
+            <div class="stat-value" id="stat-expected" style="font-size:18px"><small>LKR</small> —</div>
+            <div class="stat-change">Total fees due</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two columns -->
+      <div class="grid-2" style="align-items:start">
+
+        <!-- Collection Progress -->
+        <div class="card">
+          <div class="card-title">📈 This Month's Collection</div>
+          <div style="margin-bottom:10px">
+            <div class="d-flex justify-between mb-1" style="font-size:13px">
+              <span class="text-muted">Collection Rate</span>
+              <span id="collection-pct" class="fw-600 text-gold">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="collection-bar" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="d-flex justify-between" style="font-size:13px;margin-top:14px">
+            <div>
+              <div class="text-muted fs-12">Collected</div>
+              <div class="fw-700 text-green" id="collected-amount">LKR 0</div>
+            </div>
+            <div style="text-align:right">
+              <div class="text-muted fs-12">Outstanding</div>
+              <div class="fw-700 text-red" id="outstanding-amount">LKR 0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grade Summary -->
+        <div class="card">
+          <div class="card-title">📚 Students by Grade</div>
+          <div id="grade-summary-list">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Unpaid Students List -->
+      <div class="card" style="margin-top:20px">
+        <div class="card-title d-flex justify-between align-center">
+          <span>⚠️ Unpaid Students — <span id="unpaid-month-label"></span></span>
+          <a href="fees.html" class="btn btn-sm btn-secondary">View All Fees →</a>
+        </div>
+        <div id="unpaid-list">
+          <div class="loading"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+    </div><!-- /page-content -->
+  </main>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

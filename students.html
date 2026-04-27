@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Students — ZERO TAMIL Kids</title>
+  <meta name="description" content="Manage students enrolled in ZERO TAMIL Kids class."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">🎓</div>
+      <div class="brand-text">
+        <h1>ZERO TAMIL Kids</h1>
+        <span>Class Fee Management</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Main Menu</div>
+      <a href="dashboard.html" class="nav-item">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a href="students.html" class="nav-item active">
+        <span class="nav-icon">👩‍🎓</span> Students
+      </a>
+      <a href="fees.html" class="nav-item">
+        <span class="nav-icon">💰</span> Fee Tracker
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="user-avatar">👩</div>
+        <div class="user-chip-info">
+          <h4>Tamil Teacher</h4>
+          <p id="user-email-display">Loading…</p>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="logout()">🚪 Sign Out</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+    <header class="page-header">
+      <div class="page-header-title">
+        <h2>Students</h2>
+        <p>Manage enrolled students</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-primary" onclick="openAddModal()" id="btn-add-student">
+          ＋ Add Student
+        </button>
+      </div>
+    </header>
+
+    <div class="page-content">
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input id="search-input" type="text" class="form-control" placeholder="Search by name…" oninput="filterStudents()"/>
+        </div>
+        <div class="filter-tabs" id="grade-filter-tabs">
+          <div class="filter-tab active" data-grade="all" onclick="setGradeFilter('all',this)">All</div>
+          <div class="filter-tab" data-grade="1"  onclick="setGradeFilter('1',this)">G1</div>
+          <div class="filter-tab" data-grade="2"  onclick="setGradeFilter('2',this)">G2</div>
+          <div class="filter-tab" data-grade="3"  onclick="setGradeFilter('3',this)">G3</div>
+          <div class="filter-tab" data-grade="4"  onclick="setGradeFilter('4',this)">G4</div>
+          <div class="filter-tab" data-grade="5"  onclick="setGradeFilter('5',this)">G5</div>
+          <div class="filter-tab" data-grade="6"  onclick="setGradeFilter('6',this)">G6</div>
+          <div class="filter-tab" data-grade="7"  onclick="setGradeFilter('7',this)">G7</div>
+          <div class="filter-tab" data-grade="8"  onclick="setGradeFilter('8',this)">G8</div>
+          <div class="filter-tab" data-grade="9"  onclick="setGradeFilter('9',this)">G9</div>
+          <div class="filter-tab" data-grade="10" onclick="setGradeFilter('10',this)">G10</div>
+        </div>
+      </div>
+
+      <!-- Students Count -->
+      <div class="d-flex justify-between align-center mb-2" style="font-size:13px">
+        <span class="text-muted">Showing <strong id="shown-count" class="text-gold">0</strong> students</span>
+        <span id="total-badge" class="badge badge-gold"></span>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrap">
+        <table id="students-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Grade</th>
+              <th>Monthly Fee</th>
+              <th>Contact</th>
+              <th>Joined</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="students-tbody">
+            <tr><td colspan="7" class="loading"><div class="spinner"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ─── ADD / EDIT MODAL ─── -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-title">Add New Student</h3>
+      <button class="modal-close" onclick="closeModal('add-modal')" aria-label="Close">✕</button>
+    </div>
+    <form id="student-form" novalidate>
+      <input type="hidden" id="edit-student-id"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="s-name">Full Name *</label>
+          <input id="s-name" type="text" class="form-control" placeholder="Student's full name" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="s-grade">Grade *</label>
+          <select id="s-grade" class="form-control" required>
+            <option value="">Select grade…</option>
+            <option value="1">Grade 1</option>
+            <option value="2">Grade 2</option>
+            <option value="3">Grade 3</option>
+            <option value="4">Grade 4</option>
+            <option value="5">Grade 5</option>
+            <option value="6">Grade 6</option>
+            <option value="7">Grade 7</option>
+            <option value="8">Grade 8</option>
+            <option value="9">Grade 9</option>
+            <option value="10">Grade 10</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="s-fee">Monthly Fee (LKR) *</label>
+          <input id="s-fee" type="number" class="form-control" placeholder="e.g. 2500" min="0" step="50" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="s-contact">Contact (Optional)</label>
+          <input id="s-contact" type="text" class="form-control" placeholder="Phone number"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="s-notes">Notes (Optional)</label>
+        <input id="s-notes" type="text" class="form-control" placeholder="Any additional notes…"/>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('add-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="save-btn">Save Student</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ─── DELETE CONFIRM MODAL ─── -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <h3 class="modal-title">Delete Student</h3>
+      <button class="modal-close" onclick="closeModal('delete-modal')">✕</button>
+    </div>
+    <p style="font-size:14px;color:var(--text-secondary);margin-bottom:6px">
+      Are you sure you want to delete <strong id="delete-student-name"></strong>?
+    </p>
+    <p style="font-size:12.5px;color:var(--red)">⚠️ This will also remove all their fee records.</p>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('delete-modal')">Cancel</button>
+      <button class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/students.js"></script>
+</body>
+</html>
