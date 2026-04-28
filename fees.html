@@ -5,10 +5,13 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Fee Tracker — ZERO TAMIL Kids</title>
   <meta name="description" content="Track monthly fee payments for ZERO TAMIL Kids students."/>
+  <meta name="theme-color" content="#f5a623"/>
+  <link rel="manifest" href="manifest.json"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="css/style.css"/>
   <style>
+    /* ── Fee-specific styles ── */
     .fee-status-cell{display:flex;align-items:center;gap:8px}
     .status-toggle{
       position:relative;display:inline-flex;align-items:center;
@@ -30,6 +33,10 @@
     .paid-state .toggle-label-paid{display:inline}
     .paid-state .toggle-label-unpaid{display:none}
     .paid-date-cell{font-size:12px;color:var(--text-muted)}
+    .fee-note{font-size:11px;color:var(--text-muted);margin-top:2px;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+
+    /* Summary bar */
     .summary-bar{
       display:flex;gap:16px;flex-wrap:wrap;
       padding:16px 20px;background:var(--bg-card);
@@ -39,12 +46,46 @@
     .summary-item{text-align:center;flex:1;min-width:80px}
     .summary-item .val{font-size:20px;font-weight:800;margin-bottom:2px}
     .summary-item .lbl{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px}
+
+    /* Month nav */
     .month-nav-btn{
       width:34px;height:34px;border-radius:8px;border:1px solid var(--border);
       background:var(--bg-card);color:var(--text-primary);font-size:16px;
       cursor:pointer;transition:var(--t);display:flex;align-items:center;justify-content:center;
     }
     .month-nav-btn:hover{border-color:var(--gold);color:var(--gold)}
+
+    /* WhatsApp button */
+    .btn-wa{
+      display:inline-flex;align-items:center;justify-content:center;
+      width:30px;height:30px;border-radius:8px;border:none;
+      background:rgba(37,211,102,0.12);cursor:pointer;
+      transition:var(--t);font-size:15px;
+    }
+    .btn-wa:hover{background:rgba(37,211,102,0.25);transform:scale(1.1)}
+
+    /* ── Payment Method Modal ── */
+    .method-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
+    .method-btn{
+      display:flex;flex-direction:column;align-items:center;gap:6px;
+      padding:14px 10px;border-radius:var(--radius-sm);
+      border:2px solid var(--border);background:var(--bg-card);
+      cursor:pointer;transition:var(--t);font-family:'Outfit',sans-serif;
+      font-size:12px;font-weight:600;color:var(--text-secondary);
+    }
+    .method-btn .method-icon{font-size:24px}
+    .method-btn:hover{border-color:rgba(245,166,35,0.4);color:var(--text-primary)}
+    .method-btn.selected{
+      border-color:var(--gold);
+      background:rgba(245,166,35,0.1);color:var(--gold);
+    }
+    .pay-summary-box{
+      background:rgba(46,204,113,0.07);border:1px solid rgba(46,204,113,0.2);
+      border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:4px;
+      display:flex;justify-content:space-between;align-items:center;
+    }
+    .pay-summary-box .pay-name{font-weight:700;font-size:14px}
+    .pay-summary-box .pay-amt{font-weight:800;color:var(--green);font-size:15px}
   </style>
 </head>
 <body>
@@ -72,6 +113,10 @@
       </a>
       <a href="fees.html" class="nav-item active">
         <span class="nav-icon">💰</span> Fee Tracker
+      </a>
+      <div class="nav-label" style="margin-top:10px">Public</div>
+      <a href="parent.html" target="_blank" class="nav-item">
+        <span class="nav-icon">👨‍👩‍👧</span> Parent Portal
       </a>
     </nav>
     <div class="sidebar-footer">
@@ -104,6 +149,7 @@
           <button class="month-nav-btn" id="next-month-btn" onclick="changeMonth(1)" title="Next month">›</button>
         </div>
         <button class="btn btn-secondary btn-sm" onclick="goToCurrentMonth()">Today</button>
+        <button class="btn btn-secondary btn-sm" onclick="printReport()" title="Print monthly report">🖨️</button>
       </div>
     </header>
 
@@ -146,7 +192,7 @@
         </div>
       </div>
 
-      <!-- Filter -->
+      <!-- Filter Toolbar -->
       <div class="toolbar">
         <div class="search-box">
           <span class="search-icon">🔍</span>
@@ -158,6 +204,10 @@
           <div class="filter-tab" data-status="paid"   onclick="setStatusFilter('paid',this)">Paid</div>
         </div>
         <button class="btn btn-success btn-sm" onclick="markAllPaid()" id="mark-all-btn">✅ Mark All Paid</button>
+        <button class="btn btn-sm" style="background:rgba(37,211,102,0.12);border:1px solid rgba(37,211,102,0.25);color:#25d366;font-weight:700"
+                onclick="sendAllUnpaidWhatsApp()" title="Send WhatsApp reminders to all unpaid students">
+          📲 Remind All Unpaid
+        </button>
       </div>
 
       <!-- Fee Table -->
@@ -170,12 +220,13 @@
               <th>Grade</th>
               <th>Monthly Fee</th>
               <th>Status</th>
-              <th>Paid Date</th>
+              <th>Paid Date / Method</th>
               <th>Action</th>
+              <th title="Send WhatsApp reminder">📲</th>
             </tr>
           </thead>
           <tbody id="fee-tbody">
-            <tr><td colspan="7" class="loading"><div class="spinner"></div></td></tr>
+            <tr><td colspan="8" class="loading"><div class="spinner"></div></td></tr>
           </tbody>
         </table>
       </div>
@@ -186,6 +237,44 @@
 
 <div class="toast-container" id="toast-container"></div>
 
+<!-- ── Payment Method Modal ── -->
+<div class="modal-overlay" id="pay-method-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h3 class="modal-title">💳 Record Payment</h3>
+      <button class="modal-close" onclick="closeModal('pay-method-modal')">✕</button>
+    </div>
+
+    <div class="pay-summary-box">
+      <span class="pay-name" id="pay-modal-name">Student</span>
+      <span class="pay-amt" id="pay-modal-amount">LKR 0</span>
+    </div>
+
+    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:2px">Payment Method</p>
+    <div class="method-grid">
+      <button class="method-btn selected" data-method="cash" onclick="selectMethod(this)">
+        <span class="method-icon">💵</span> Cash
+      </button>
+      <button class="method-btn" data-method="bank" onclick="selectMethod(this)">
+        <span class="method-icon">🏦</span> Bank Transfer
+      </button>
+      <button class="method-btn" data-method="online" onclick="selectMethod(this)">
+        <span class="method-icon">📱</span> Online
+      </button>
+    </div>
+
+    <div class="form-group" style="margin-bottom:6px">
+      <label class="form-label" for="pay-note">Note (Optional)</label>
+      <input id="pay-note" type="text" class="form-control" placeholder="e.g. Bank ref #1234, WhatsApp payment…"/>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('pay-method-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmPay()">✅ Confirm Payment</button>
+    </div>
+  </div>
+</div>
+
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -194,6 +283,13 @@
 <script src="js/auth.js"></script>
 <script src="js/fees.js"></script>
 <script>
+// Method button selection
+function selectMethod(btn) {
+  document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+// Mobile sidebar
 function toggleSidebar(){
   const s=document.getElementById('sidebar');
   const b=document.getElementById('sidebar-backdrop');
@@ -208,6 +304,11 @@ function closeSidebar(){
   document.getElementById('hamburger-btn').classList.remove('open');
 }
 document.querySelectorAll('.nav-item').forEach(link=>link.addEventListener('click',closeSidebar));
+
+// PWA Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
 </script>
 </body>
 </html>

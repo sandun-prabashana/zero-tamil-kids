@@ -8,6 +8,10 @@ let feeMap        = {};       // studentId -> fee doc data
 let activeMonth   = currentMonth();
 let statusFilter  = 'all';
 
+// Pending pay confirmation state
+let _pendingStudentId = null;
+let _pendingAmount    = 0;
+
 auth.onAuthStateChanged(async user => {
   if (!user) return;
   const el = document.getElementById('user-email-display');
@@ -39,11 +43,9 @@ function updateMonthDisplay() {
 // ─── Load Data ────────────────────────────
 async function loadAll() {
   try {
-    // Load students
     const snap = await db.collection('students').orderBy('name').get();
     allStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    // Load fees for active month
     const feeSnap = await db.collection('fees').where('month','==', activeMonth).get();
     feeMap = {};
     feeSnap.docs.forEach(d => { feeMap[d.data().studentId] = { docId: d.id, ...d.data() }; });
@@ -72,7 +74,7 @@ function renderFeeTable() {
   });
 
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7">
+    tbody.innerHTML = `<tr><td colspan="8">
       <div class="empty-state">
         <div class="empty-icon">${allStudents.length===0?'👩‍🎓':'✅'}</div>
         <p>${allStudents.length===0
@@ -83,16 +85,27 @@ function renderFeeTable() {
   }
 
   tbody.innerHTML = list.map((s, i) => {
-    const fee    = feeMap[s.id];
-    const isPaid = fee?.status === 'paid';
-    const paidDate = isPaid && fee?.paidDate
-      ? formatDate(fee.paidDate)
-      : '—';
+    const fee      = feeMap[s.id];
+    const isPaid   = fee?.status === 'paid';
+    const paidDate = isPaid && fee?.paidDate ? formatDate(fee.paidDate) : '—';
+    const method   = fee?.paymentMethod || '';
+    const methodBadge = isPaid && method ? methodBadgeHTML(method) : '';
+    const note     = fee?.note ? `<div class="fee-note" title="${esc(fee.note)}">📝 ${esc(fee.note)}</div>` : '';
+
+    // WhatsApp button — only for unpaid students
+    const waBtn = !isPaid
+      ? `<button class="btn-wa" onclick="sendWhatsApp('${s.id}')" title="Send WhatsApp reminder">
+           <span>📲</span>
+         </button>`
+      : '';
 
     return `
     <tr id="row-${s.id}">
       <td class="text-muted fs-12">${i+1}</td>
-      <td class="fw-600">${esc(s.name)}</td>
+      <td>
+        <div class="fw-600">${esc(s.name)}</div>
+        ${note}
+      </td>
       <td><span class="badge badge-gold">Grade ${s.grade}</span></td>
       <td class="fw-600">${fmtLKR(s.monthlyFee)}</td>
       <td>
@@ -106,15 +119,28 @@ function renderFeeTable() {
           </div>
         </div>
       </td>
-      <td class="paid-date-cell">${paidDate}</td>
+      <td class="paid-date-cell">
+        ${isPaid ? `<div>${paidDate}</div>${methodBadge}` : '—'}
+      </td>
       <td>
         ${isPaid
           ? `<button class="btn btn-danger btn-xs" onclick="markUnpaid('${s.id}')">↩ Undo</button>`
-          : `<button class="btn btn-success btn-xs" onclick="markPaid('${s.id}',${s.monthlyFee})">✅ Mark Paid</button>`
+          : `<button class="btn btn-success btn-xs" onclick="openPayModal('${s.id}',${s.monthlyFee})">✅ Mark Paid</button>`
         }
       </td>
+      <td>${waBtn}</td>
     </tr>`;
   }).join('');
+}
+
+function methodBadgeHTML(method) {
+  const map = {
+    cash:   { label:'💵 Cash',   cls:'badge-gray' },
+    bank:   { label:'🏦 Bank',   cls:'badge-gray' },
+    online: { label:'📱 Online', cls:'badge-gray' }
+  };
+  const m = map[method] || { label: method, cls:'badge-gray' };
+  return `<span class="badge ${m.cls}" style="font-size:10px;margin-top:4px">${m.label}</span>`;
 }
 
 // ─── Summary Bar ──────────────────────────
@@ -141,27 +167,59 @@ function renderSummary() {
   }
 }
 
+// ─── Payment Method Modal ─────────────────
+function openPayModal(studentId, amount) {
+  _pendingStudentId = studentId;
+  _pendingAmount    = amount;
+
+  const s = allStudents.find(x => x.id === studentId);
+  const nameEl = document.getElementById('pay-modal-name');
+  const amtEl  = document.getElementById('pay-modal-amount');
+  if (nameEl) nameEl.textContent = s?.name || 'Student';
+  if (amtEl)  amtEl.textContent  = fmtLKR(amount);
+
+  // Reset form
+  document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelector('.method-btn[data-method="cash"]')?.classList.add('selected');
+  const noteEl = document.getElementById('pay-note');
+  if (noteEl) noteEl.value = '';
+
+  openModal('pay-method-modal');
+}
+
+function confirmPay() {
+  const method = document.querySelector('.method-btn.selected')?.dataset.method || 'cash';
+  const note   = document.getElementById('pay-note')?.value.trim() || '';
+  closeModal('pay-method-modal');
+  markPaid(_pendingStudentId, _pendingAmount, method, note);
+}
+
 // ─── Toggle Paid/Unpaid ───────────────────
 async function toggleFee(studentId, currentlyPaid) {
   if (currentlyPaid) await markUnpaid(studentId);
   else {
     const s = allStudents.find(x=>x.id===studentId);
-    await markPaid(studentId, s?.monthlyFee||0);
+    openPayModal(studentId, s?.monthlyFee||0);
   }
 }
 
-async function markPaid(studentId, amount) {
+async function markPaid(studentId, amount, method='cash', note='') {
   try {
     const feeId = `${studentId}_${activeMonth}`;
-    await db.collection('fees').doc(feeId).set({
+    const data = {
       studentId,
-      month:    activeMonth,
-      status:   'paid',
-      amount:   Number(amount),
-      paidDate: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-    });
-    feeMap[studentId] = { docId: feeId, studentId, month: activeMonth, status:'paid', amount: Number(amount), paidDate: new Date() };
+      month:         activeMonth,
+      status:        'paid',
+      amount:        Number(amount),
+      paymentMethod: method,
+      paidDate:      firebase.firestore.FieldValue.serverTimestamp(),
+      paidAt:        firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt:     firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (note) data.note = note;
+
+    await db.collection('fees').doc(feeId).set(data);
+    feeMap[studentId] = { docId: feeId, ...data, paidDate: new Date(), paidAt: new Date() };
     renderFeeTable();
     renderSummary();
     const s = allStudents.find(x=>x.id===studentId);
@@ -200,7 +258,9 @@ async function markAllPaid() {
       batch.set(ref, {
         studentId: s.id, month: activeMonth,
         status:'paid', amount: Number(s.monthlyFee),
-        paidDate: firebase.firestore.FieldValue.serverTimestamp(),
+        paymentMethod: 'cash',
+        paidDate:  firebase.firestore.FieldValue.serverTimestamp(),
+        paidAt:    firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       count++;
@@ -214,6 +274,139 @@ async function markAllPaid() {
   } finally {
     btn.disabled = false; btn.textContent = '✅ Mark All Paid';
   }
+}
+
+// ─── WhatsApp Reminder ────────────────────
+function buildWAMessage(student) {
+  const month = fmtMonth(activeMonth);
+  return `Hello! 🙏\n\nThis is a reminder that *${student.name}*'s class fee for *${month}* is still unpaid.\n\n💰 Amount Due: *${fmtLKR(student.monthlyFee)}*\n\nPlease make the payment at your earliest convenience.\n\nThank you!\n🎓 ZERO TAMIL Kids`;
+}
+
+function sendWhatsApp(studentId) {
+  const s = allStudents.find(x => x.id === studentId);
+  if (!s) return;
+
+  const message = buildWAMessage(s);
+  const encoded = encodeURIComponent(message);
+
+  if (s.contact && s.contact.trim()) {
+    // Clean phone number — remove spaces, dashes; add country code if needed
+    let phone = s.contact.replace(/[\s\-\(\)]/g, '');
+    if (phone.startsWith('0')) phone = '94' + phone.slice(1); // Sri Lanka: 0XX -> 94XX
+    if (!phone.startsWith('+') && !phone.startsWith('94')) phone = '94' + phone;
+    phone = phone.replace('+', '');
+    window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
+  } else {
+    // No phone — copy message to clipboard
+    navigator.clipboard.writeText(message).then(() => {
+      showToast(`📋 Message for ${s.name} copied! (No phone number saved)`, 'info');
+    }).catch(() => {
+      // Fallback: open generic WA
+      window.open(`https://wa.me/?text=${encoded}`, '_blank');
+    });
+  }
+}
+
+function sendAllUnpaidWhatsApp() {
+  const unpaid = allStudents.filter(s => feeMap[s.id]?.status !== 'paid');
+  if (unpaid.length === 0) {
+    showToast('🎉 All students have paid this month!', 'info'); return;
+  }
+
+  // Build combined message list to copy
+  const lines = unpaid.map(s =>
+    `• ${s.name} — ${fmtLKR(s.monthlyFee)}`
+  ).join('\n');
+
+  const summary = `📋 *Unpaid Students — ${fmtMonth(activeMonth)}*\n\n${lines}\n\nTotal Unpaid: ${unpaid.length} student${unpaid.length!==1?'s':''}`;
+
+  navigator.clipboard.writeText(summary).then(() => {
+    showToast(`📋 Unpaid list copied to clipboard (${unpaid.length} students)`, 'info');
+  }).catch(() => showToast('Could not copy to clipboard.', 'error'));
+
+  // Open WhatsApp for each student that has a phone number
+  const withPhone = unpaid.filter(s => s.contact && s.contact.trim());
+  if (withPhone.length > 0) {
+    // Open first one; browser popup blocker may block multiple windows
+    sendWhatsApp(withPhone[0].id);
+    if (withPhone.length > 1) {
+      showToast(`📲 Opened WhatsApp for ${withPhone[0].name}. Send individually for others.`, 'info');
+    }
+  }
+}
+
+// ─── Print Report ─────────────────────────
+function printReport() {
+  // Build print content
+  const monthLabel = fmtMonth(activeMonth);
+  const total     = allStudents.length;
+  const paidList  = allStudents.filter(s => feeMap[s.id]?.status === 'paid');
+  const paid      = paidList.length;
+  const unpaid    = total - paid;
+  const collected = paidList.reduce((acc, s) => acc + (Number(feeMap[s.id]?.amount)||0), 0);
+  const expected  = allStudents.reduce((acc,s)=>acc+(Number(s.monthlyFee)||0), 0);
+  const pct       = expected > 0 ? Math.round((collected/expected)*100) : 0;
+
+  const rows = allStudents.map((s, i) => {
+    const fee    = feeMap[s.id];
+    const isPaid = fee?.status === 'paid';
+    const method = fee?.paymentMethod ? `(${fee.paymentMethod})` : '';
+    return `<tr>
+      <td>${i+1}</td>
+      <td><strong>${esc(s.name)}</strong></td>
+      <td>Grade ${s.grade}</td>
+      <td>${fmtLKR(s.monthlyFee)}</td>
+      <td style="color:${isPaid?'#27ae60':'#e74c3c'};font-weight:700">
+        ${isPaid ? `✓ Paid ${method}` : '✗ Unpaid'}
+      </td>
+      <td>${isPaid && fee?.paidDate ? formatDate(fee.paidDate) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head>
+    <meta charset="UTF-8"/>
+    <title>Fee Report — ${monthLabel}</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:30px;color:#111;font-size:13px}
+      h1{font-size:20px;margin-bottom:4px}
+      .subtitle{color:#555;font-size:13px;margin-bottom:20px}
+      .stats{display:flex;gap:30px;margin-bottom:20px;padding:14px 18px;
+             background:#f8f8f8;border-radius:8px;border:1px solid #ddd}
+      .stat{text-align:center}
+      .stat .val{font-size:22px;font-weight:800}
+      .stat .lbl{font-size:11px;color:#777;text-transform:uppercase;letter-spacing:0.5px}
+      .green{color:#27ae60}.red{color:#e74c3c}.gold{color:#e67e22}
+      table{width:100%;border-collapse:collapse;margin-top:10px}
+      th{background:#f0f0f0;padding:9px 12px;text-align:left;font-size:11px;
+         text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #ddd}
+      td{padding:9px 12px;border-bottom:1px solid #eee;font-size:13px}
+      tr:last-child td{border-bottom:none}
+      .footer{margin-top:24px;font-size:11px;color:#aaa;text-align:center}
+      @media print{body{padding:15px}}
+    </style>
+  </head><body>
+    <h1>🎓 ZERO TAMIL Kids — Fee Report</h1>
+    <div class="subtitle">📅 ${monthLabel} &nbsp;·&nbsp; Printed on ${new Date().toLocaleDateString('en-LK',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
+    <div class="stats">
+      <div class="stat"><div class="val gold">${total}</div><div class="lbl">Total Students</div></div>
+      <div class="stat"><div class="val green">${paid}</div><div class="lbl">Paid</div></div>
+      <div class="stat"><div class="val red">${unpaid}</div><div class="lbl">Unpaid</div></div>
+      <div class="stat"><div class="val green" style="font-size:16px">${fmtLKR(collected)}</div><div class="lbl">Collected</div></div>
+      <div class="stat"><div class="val red" style="font-size:16px">${fmtLKR(expected-collected)}</div><div class="lbl">Outstanding</div></div>
+      <div class="stat"><div class="val gold">${pct}%</div><div class="lbl">Collection Rate</div></div>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>Student Name</th><th>Grade</th><th>Fee</th><th>Status</th><th>Paid Date</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="footer">ZERO TAMIL Kids · Class Fee Management System</div>
+  </body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 400);
 }
 
 // ─── Filters ──────────────────────────────

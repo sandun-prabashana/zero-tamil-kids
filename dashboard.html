@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Dashboard — ZERO TAMIL Kids</title>
   <meta name="description" content="Dashboard overview for ZERO TAMIL Kids class fee management."/>
+  <meta name="theme-color" content="#f5a623"/>
+  <link rel="manifest" href="manifest.json"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="css/style.css"/>
@@ -34,6 +36,10 @@
       </a>
       <a href="fees.html" class="nav-item" id="nav-fees">
         <span class="nav-icon">💰</span> Fee Tracker
+      </a>
+      <div class="nav-label" style="margin-top:10px">Public</div>
+      <a href="parent.html" target="_blank" class="nav-item" id="nav-parent">
+        <span class="nav-icon">👨‍👩‍👧</span> Parent Portal
       </a>
     </nav>
     <div class="sidebar-footer">
@@ -176,8 +182,8 @@ function closeSidebar(){
   document.getElementById('sidebar-backdrop').classList.remove('open');
   document.getElementById('hamburger-btn').classList.remove('open');
 }
-// Close sidebar when a nav link is clicked on mobile
 document.querySelectorAll('.nav-item').forEach(link=>link.addEventListener('click',closeSidebar));
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 </script>
 </body>
 </html>
