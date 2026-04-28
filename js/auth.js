@@ -7,17 +7,37 @@ const PAGES = {
   fees:      'fees.html'
 };
 
+// Hide page body until auth is resolved — prevents unauthenticated flash
+(function guardPage() {
+  document.documentElement.style.opacity = '0';
+  document.documentElement.style.pointerEvents = 'none';
+})();
+
+function _showPage() {
+  document.documentElement.style.transition = 'opacity 0.2s ease';
+  document.documentElement.style.opacity = '1';
+  document.documentElement.style.pointerEvents = '';
+}
+
 // Redirect to login if not authenticated
 function requireAuth() {
   auth.onAuthStateChanged(user => {
-    if (!user) window.location.href = PAGES.login;
+    if (!user) {
+      window.location.replace(PAGES.login);
+    } else {
+      _showPage();
+    }
   });
 }
 
 // Redirect to dashboard if already logged in
 function redirectIfAuth() {
   auth.onAuthStateChanged(user => {
-    if (user) window.location.href = PAGES.dashboard;
+    if (user) {
+      window.location.replace(PAGES.dashboard);
+    } else {
+      _showPage();
+    }
   });
 }
 

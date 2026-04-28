@@ -303,15 +303,46 @@ tbody td{padding:13px 15px;font-size:13.5px;vertical-align:middle}
 .progress-fill.green{background:linear-gradient(90deg,#27ae60,var(--green))}
 .progress-fill.red{background:linear-gradient(90deg,#c0392b,var(--red))}
 
+/* ─── HAMBURGER BUTTON ─────────────────────────────────────── */
+.hamburger{
+  display:none;flex-direction:column;justify-content:center;gap:5px;
+  width:38px;height:38px;background:var(--bg-card);
+  border:1px solid var(--border);border-radius:10px;
+  cursor:pointer;padding:7px;transition:var(--t);flex-shrink:0;
+}
+.hamburger:hover{background:var(--bg-card-hover);border-color:rgba(245,166,35,0.3)}
+.hamburger span{
+  display:block;width:100%;height:2px;
+  background:var(--text-primary);border-radius:2px;transition:var(--t);
+}
+.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0)}
+.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+
+/* Sidebar backdrop for mobile */
+.sidebar-backdrop{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);
+  backdrop-filter:blur(4px);z-index:99;
+  opacity:0;transition:opacity 0.25s ease;pointer-events:none;
+}
+.sidebar-backdrop.open{opacity:1;pointer-events:all;}
+
 /* ─── RESPONSIVE ─────────────────────────── */
 @media(max-width:768px){
-  .sidebar{transform:translateX(-100%)}
+  .hamburger{display:flex}
+  .sidebar-backdrop{display:block}
+  .sidebar{
+    transform:translateX(-100%);
+    transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    z-index:100;
+  }
   .sidebar.open{transform:translateX(0)}
   .main-content{margin-left:0}
   .page-content{padding:18px 16px}
-  .page-header{padding:0 16px}
+  .page-header{padding:0 16px;gap:10px}
   .form-row{grid-template-columns:1fr}
   .stats-grid{grid-template-columns:1fr 1fr}
+  .grid-2{grid-template-columns:1fr}
 }
 @media(max-width:480px){
   .stats-grid{grid-template-columns:1fr}

@@ -12,6 +12,9 @@
 <body>
 <div class="app">
 
+  <!-- Mobile Sidebar Backdrop -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
@@ -48,6 +51,9 @@
   <!-- Main -->
   <main class="main-content">
     <header class="page-header">
+      <button class="hamburger" id="hamburger-btn" aria-label="Open menu" onclick="toggleSidebar()">
+        <span></span><span></span><span></span>
+      </button>
       <div class="page-header-title">
         <h2>Students</h2>
         <p>Manage enrolled students</p>
@@ -192,5 +198,21 @@
 <script src="js/firebase-config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/students.js"></script>
+<script>
+function toggleSidebar(){
+  const s=document.getElementById('sidebar');
+  const b=document.getElementById('sidebar-backdrop');
+  const h=document.getElementById('hamburger-btn');
+  s.classList.toggle('open');
+  b.classList.toggle('open');
+  h.classList.toggle('open');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-backdrop').classList.remove('open');
+  document.getElementById('hamburger-btn').classList.remove('open');
+}
+document.querySelectorAll('.nav-item').forEach(link=>link.addEventListener('click',closeSidebar));
+</script>
 </body>
 </html>
